@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  nestjs-mongodb:
+    container_name: nestjs-mongodb
+    build:
+      context: .
+    command: npm run start:dev
+    ports:
+      - ${PORT}:${PORT}
+    restart: unless-stopped
