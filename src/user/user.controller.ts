@@ -8,16 +8,17 @@ import {
   Param,
   Post,
   Put,
-  Res,
   Query,
+  HttpException,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiQuery } from '@nestjs/swagger';
 import { ParseObjectIdPipe } from 'src/common/pipes/parse-object-id.pipe';
-import { PaginationParams } from 'src/common/pagination.param';
 import { Swagger } from 'src/common/decorators/swagger.decorator';
+import { FindUserDto } from './dto/find-user.dto';
+import { CreatedResponse, OKResponse } from 'src/constants/response';
 
 @ApiTags('Users')
 @Controller('user')
@@ -30,25 +31,9 @@ export class UserController {
     'Success',
     'Email already exists!, Phone already exists!, User not created!',
   )
-  async create(@Res() response, @Body() createUserDto: CreateUserDto) {
-    try {
-      const user = await this.userService.create(createUserDto);
-      return response.status(HttpStatus.CREATED).json({
-        message: 'Success',
-        data: user,
-      });
-    } catch (error) {
-      console.log(error);
-      if (error.code === 11000) {
-        if (error.keyValue.email) {
-          throw new BadRequestException('Email already exists!');
-        }
-        if (error.keyValue.phone) {
-          throw new BadRequestException('Phone already exists!');
-        }
-      }
-      throw new BadRequestException('User not created!');
-    }
+  async create(@Body() createUserDto: CreateUserDto) {
+    const user = await this.userService.create(createUserDto);
+    return new CreatedResponse('Success', user);
   }
 
   @Swagger(
@@ -58,31 +43,20 @@ export class UserController {
   )
   @Put(':id')
   async update(
-    @Res() response,
     @Param('id', new ParseObjectIdPipe()) id: string,
     @Body() updateUserDto: UpdateUserDto,
   ) {
-    try {
-      const user = await this.userService.update(id, updateUserDto);
-      return response.status(HttpStatus.OK).json({
-        message: 'Success',
-        data: user,
-      });
-    } catch (error) {
-      console.log(error);
-      if (error.code === 11000) {
-        if (error.keyValue.email) {
-          throw new BadRequestException('Email already exists!');
-        }
-        if (error.keyValue.phone) {
-          throw new BadRequestException('Phone already exists!');
-        }
-      }
-      throw new BadRequestException('User not updated!');
-    }
+    const user = await this.userService.update({ _id: id }, updateUserDto);
+    return new OKResponse('Success', user);
   }
 
   @Swagger('Get many users', 'Success')
+  @ApiQuery({
+    name: 'isActive',
+    required: false,
+    type: Boolean,
+    description: 'isActive',
+  })
   @ApiQuery({
     name: 'skip',
     required: false,
@@ -96,66 +70,32 @@ export class UserController {
     description: 'Limit',
   })
   @Get()
-  async getAll(@Res() response, @Query() { skip, limit }: PaginationParams) {
-    try {
-      const users = await this.userService.findAll(skip, limit);
-      return response.status(HttpStatus.OK).json({
-        message: 'Success',
-        data: users,
-      });
-    } catch (err) {
-      return response.status(err.status).json(err.response);
-    }
+  async getAll(@Query() { isActive, skip, limit }: FindUserDto) {
+    const users = await this.userService.findAll(
+      { isActive },
+      {
+        skip,
+        limit,
+      },
+    );
+    return new OKResponse('Success', users);
   }
 
   @Swagger('Get one User', 'Success', undefined, 'User not found')
   @Get('/:id')
-  async getOne(
-    @Res() response,
-    @Param('id', new ParseObjectIdPipe()) id: string,
-  ) {
-    try {
-      const user = await this.userService.findOne(id);
-      return response.status(HttpStatus.OK).json({
-        message: 'Success',
-        data: user,
-      });
-    } catch (err) {
-      return response.status(err.status).json(err.response);
-    }
-  }
-
-  @Swagger('Deactivate one User', 'Success', undefined, 'User not found')
-  @Delete('/deactivate/:id')
-  async deactivate(
-    @Res() response,
-    @Param('id', new ParseObjectIdPipe()) id: string,
-  ) {
-    try {
-      const user = await this.userService.deactivate(id);
-      return response.status(HttpStatus.OK).json({
-        message: 'Success',
-        data: user,
-      });
-    } catch (err) {
-      return response.status(err.status).json(err.response);
-    }
+  async getOne(@Param('id', new ParseObjectIdPipe()) id: string) {
+    const user = await this.userService.findOne(id);
+    return new OKResponse('Success', user);
   }
 
   @Swagger('Delete one User', 'Success', undefined, 'User not found')
-  @Delete(':id')
-  async delete(
-    @Res() response,
-    @Param('id', new ParseObjectIdPipe()) id: string,
-  ) {
+  @Delete('/:id')
+  async delete(@Param('id', new ParseObjectIdPipe()) id: string) {
     try {
-      const user = await this.userService.remove(id);
-      return response.status(HttpStatus.OK).json({
-        message: 'Success',
-        data: user,
-      });
+      const user = await this.userService.softDelete(id);
+      return new OKResponse('Success', user);
     } catch (err) {
-      return response.status(err.status).json(err.response);
+      throw new HttpException(err.response, err.status);
     }
   }
 }

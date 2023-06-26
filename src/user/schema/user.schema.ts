@@ -26,7 +26,7 @@ export class User {
   @Prop({ type: String, required: true, enum: Object.values(UserRole) })
   role: UserRole;
 
-  @Prop({ default: true })
+  @Prop({ default: true, select: false })
   isActive: boolean;
 }
 

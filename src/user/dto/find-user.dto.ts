@@ -1,6 +1,13 @@
-import { PaginationParams } from 'src/common/pagination.param';
+import { IsBoolean } from 'class-validator';
+import { ToBoolean } from 'src/common/decorators/to-boolean.decorator';
+import { ApiProperty } from '@nestjs/swagger';
+import { PaginationParams } from 'src/types/common.type';
 
 export class FindUserDto extends PaginationParams {
-  readonly isActive?: boolean;
-  readonly keyword?: string;
+  @ApiProperty({
+    type: Boolean,
+  })
+  @IsBoolean()
+  @ToBoolean()
+  readonly isActive: boolean;
 }

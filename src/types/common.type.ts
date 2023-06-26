@@ -6,11 +6,19 @@ export class PaginationParams {
   @Type(() => Number)
   @IsInt()
   @Min(0)
-  skip?: number;
+  readonly skip?: number;
 
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  limit?: number;
+  readonly limit?: number;
+}
+
+export type FindAllResponse<T> = { count: number; items: T[] };
+
+export interface Response<T> {
+  statusCode: number;
+  message: string;
+  data: T;
 }
