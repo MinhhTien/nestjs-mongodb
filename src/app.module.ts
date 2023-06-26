@@ -1,20 +1,27 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UserModule } from './user/user.module';
+import { LogMiddleware } from './common/middlewares/log.middleware';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
-    MongooseModule.forRoot(
-      'mongodb+srv://minhtien:qvjqghcAskO7grKw@cluster0.xtc3ryh.mongodb.net/',
-      {
-        dbName: 'demo',
-      },
-    ),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: process.env.NODE_ENV === 'development' ? '.env.dev' : '.env',
+    }),
+    MongooseModule.forRoot(process.env.DATABASE_URI, {
+      dbName: 'demo',
+    }),
     UserModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LogMiddleware).forRoutes('*');
+  }
+}

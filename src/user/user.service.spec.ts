@@ -7,7 +7,11 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UserRole } from 'src/constants/enum';
 import { UserRepository } from './repositories/user.repository';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  NotFoundException,
+} from '@nestjs/common';
 
 describe('UserService', () => {
   let service: UserService;
@@ -56,9 +60,36 @@ describe('UserService', () => {
       const result = await service.create(createUserDto);
       userId = result._id;
       expect(result).toMatchObject(createUserDto);
-    });
-    afterEach(async () => {
       await service.delete(userId);
+    });
+
+    it('should throw an error when email is duplicated', async () => {
+      try {
+        userId = (await service.create(createUserDto))._id;
+        await service.create({
+          ...createUserDto,
+          phone: '1234567891',
+        });
+      } catch (error) {
+        expect(error).toBeInstanceOf(BadRequestException);
+        expect(error.message).toBe('Email already exists!');
+        expect(error.status).toBe(400);
+      } finally {
+        await service.delete(userId);
+      }
+    });
+
+    it('should throw an error when phone is duplicated', async () => {
+      try {
+        userId = (await service.create(createUserDto))._id;
+        await service.create({ ...createUserDto, email: 'test1@gmail.com ' });
+      } catch (error) {
+        expect(error).toBeInstanceOf(BadRequestException);
+        expect(error.message).toBe('Phone already exists!');
+        expect(error.status).toBe(400);
+      } finally {
+        await service.delete(userId);
+      }
     });
   });
 
@@ -66,7 +97,8 @@ describe('UserService', () => {
     beforeEach(async () => {
       userId = (await service.create(createUserDto))._id;
     });
-    it('should return updated informtaion', async () => {
+
+    it('should return updated information', async () => {
       const updateUserDto: UpdateUserDto = {
         name: 'test after',
         role: UserRole.Manager,
@@ -76,6 +108,7 @@ describe('UserService', () => {
         await service.update({ _id: userId }, updateUserDto),
       ).toMatchObject(updateUserDto);
     });
+
     afterEach(async () => {
       await service.delete(userId);
     });
@@ -108,6 +141,7 @@ describe('UserService', () => {
       expect(result).toHaveProperty('phone');
       expect(result).toHaveProperty('role');
     });
+
     afterEach(async () => {
       await service.delete(userId);
     });
@@ -117,6 +151,7 @@ describe('UserService', () => {
     beforeEach(async () => {
       userId = (await service.create(createUserDto))._id;
     });
+
     it('should return true', async () => {
       try {
         expect(await service.delete(userId)).toBe(true);
